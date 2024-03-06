@@ -299,6 +299,7 @@ class MFCCAEncoder(AbsEncoder):
         )
         if self.normalize_before:
             self.after_norm = LayerNorm(output_size)
+        """
         self.conv1 = torch.nn.Conv2d(8, 16, [5, 7], stride=[1, 1], padding=(2, 3))
 
         self.conv2 = torch.nn.Conv2d(16, 32, [5, 7], stride=[1, 1], padding=(2, 3))
@@ -308,16 +309,16 @@ class MFCCAEncoder(AbsEncoder):
         self.conv4 = torch.nn.Conv2d(16, 1, [5, 7], stride=[1, 1], padding=(2, 3))
 
         """
-        self.conv1 = torch.nn.Conv2d(8, 16, [5, 5], stride=[1, 1], padding=(2, 3))
+        self.conv1 = torch.nn.Conv2d(8, 16, [5, 5], stride=[1, 1], padding=(2, 2))
 
-        self.conv2 = torch.nn.Conv2d(16, 8, [5, 5], stride=[1, 1], padding=(2, 3))
+        self.conv2 = torch.nn.Conv2d(16, 8, [5, 5], stride=[1, 1], padding=(2, 2))
 
-        self.conv3 = torch.nn.Conv2d(32, 4, [5, 5], stride=[1, 1], padding=(2, 3))
+        self.conv3 = torch.nn.Conv2d(8, 4, [5, 5], stride=[1, 1], padding=(2, 2))
 
-        self.conv4 = torch.nn.Conv2d(16, 2, [5, 5], stride=[1, 1], padding=(2, 3))
+        self.conv4 = torch.nn.Conv2d(4, 2, [5, 5], stride=[1, 1], padding=(2, 2))
 
-        self.conv4 = torch.nn.Conv2d(16, 1, [5, 5], stride=[1, 1], padding=(2, 3))
-        """
+        self.conv5 = torch.nn.Conv2d(2, 1, [5, 5], stride=[1, 1], padding=(2, 2))
+        
         """
         self.interctc_layer_idx = interctc_layer_idx
         if len(interctc_layer_idx) > 0:
@@ -436,6 +437,7 @@ class MFCCAEncoder(AbsEncoder):
         xs_pad = self.conv2(xs_pad)
         xs_pad = self.conv3(xs_pad)
         xs_pad = self.conv4(xs_pad)
+        xs_pad = self.conv5(xs_pad)
         xs_pad = xs_pad.squeeze().reshape(-1, t_leng, d_dim) # T x D
         mask_tmp = masks.size(1)
         masks = masks.reshape(-1, channel_size, mask_tmp, t_leng)[:, 0, :, :]
