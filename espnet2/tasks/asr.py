@@ -60,8 +60,7 @@ from espnet2.asr.frontend.whisper import WhisperFrontend
 from espnet2.asr.frontend.windowing import SlidingWindow
 from espnet2.asr.maskctc_model import MaskCTCModel
 from espnet2.asr.pit_espnet_model import ESPnetASRModel as PITESPnetModel
-from espnet2.asr.mfcca_model import MFCCAModel
-from espnet2.asr.mfcca_ctc_model import MFCCACTCModel
+from espnet2.asr.mfcca_model import MFCCACTCModel
 from espnet2.asr.postencoder.abs_postencoder import AbsPostEncoder
 from espnet2.asr.postencoder.hugging_face_transformers_postencoder import (
     HuggingFaceTransformersPostEncoder,
@@ -130,7 +129,6 @@ model_choices = ClassChoices(
         espnet=ESPnetASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
-        mfcca=MFCCAModel,
         mfcca_ctc=MFCCACTCModel,
     ),
     type_check=AbsESPnetModel,
