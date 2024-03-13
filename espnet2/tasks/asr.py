@@ -69,6 +69,7 @@ from espnet2.asr.specaug.abs_specaug import AbsSpecAug
 from espnet2.asr.specaug.specaug import SpecAug
 from espnet2.asr_transducer.joint_network import JointNetwork
 from espnet2.layers.abs_normalize import AbsNormalize
+from espnet2.layers.label_aggregation import LabelAggregate
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.layers.utterance_mvn import UtteranceMVN
 from espnet2.tasks.abs_task import AbsTask
@@ -117,6 +118,11 @@ normalize_choices = ClassChoices(
     type_check=AbsNormalize,
     default="utterance_mvn",
     optional=True,
+)
+label_aggregator_choices = ClassChoices(
+    "label_aggregator",
+    classes=dict(label_aggregator=LabelAggregate),
+    default="label_aggregator",
 )
 model_choices = ClassChoices(
     "model",
@@ -213,6 +219,8 @@ class ASRTask(AbsTask):
         specaug_choices,
         # --normalize and --normalize_conf
         normalize_choices,
+        # --label_aggregator and --label_aggregator_conf
+        label_aggregator_choices,
         # --model and --model_conf
         model_choices,
         # --preencoder and --preencoder_conf
@@ -487,9 +495,7 @@ class ASRTask(AbsTask):
     ) -> Tuple[str, ...]:
         MAX_REFERENCE_NUM = 4
 
-        retval = ["text_spk{}".format(n) for n in range(2, MAX_REFERENCE_NUM + 1)]
-        retval = retval + ["prompt"]
-        retval = tuple(retval)
+        retval = ("spk_labels",)
 
         logging.info(f"Optional Data Names: {retval }")
         assert check_return_type(retval)
@@ -548,6 +554,13 @@ class ASRTask(AbsTask):
             normalize = normalize_class(**args.normalize_conf)
         else:
             normalize = None
+
+        # ex. Label Aggregator layer
+        label_aggregator_class = label_aggregator_choices.get_class(
+            args.label_aggregator
+        )
+        label_aggregator = label_aggregator_class(**args.label_aggregator_conf)
+        print(f"label Aggregator: {label_aggregator}")
 
         # 4. Pre-encoder input block
         # NOTE(kan-bayashi): Use getattr to keep the compatibility
@@ -617,6 +630,7 @@ class ASRTask(AbsTask):
             frontend=frontend,
             specaug=specaug,
             normalize=normalize,
+            label_aggregator=label_aggregator,
             preencoder=preencoder,
             encoder=encoder,
             postencoder=postencoder,

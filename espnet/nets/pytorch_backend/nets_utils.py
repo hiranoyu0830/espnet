@@ -51,9 +51,23 @@ def pad_list(xs, pad_value):
                 [1., 0., 0., 0.]])
 
     """
+
     n_batch = len(xs)
     max_len = max(x.size(0) for x in xs)
     pad = xs[0].new(n_batch, max_len, *xs[0].size()[1:]).fill_(pad_value)
+ 
+    # this is for the case of multi-speaker and for dealing with espnet_rttm files
+    if len(xs[0].shape) != 1 : 
+        if xs[0].shape[-1] != 8 and xs[0].shape[-1] != 80:
+            pad = xs[0].new(n_batch, max_len, 4).fill_(pad_value)
+            #print("xs_size: ", xs[1].size())
+            for i in range(n_batch):
+                spk_num = xs[i].shape[-1]
+                #print("spk_num: ", spk_num)
+                if spk_num < 4:
+                    zeros = torch.zeros(xs[i].size(0), 4 - spk_num)
+                    xs[i] = torch.cat((xs[i], zeros), -1)
+                    assert xs[i].size(-1) == 4
 
     for i in range(n_batch):
         pad[i, : xs[i].size(0)] = xs[i]
