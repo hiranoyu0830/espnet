@@ -44,6 +44,7 @@ class ESPnetASRModel(AbsESPnetModel):
         frontend: Optional[AbsFrontend],
         specaug: Optional[AbsSpecAug],
         normalize: Optional[AbsNormalize],
+        label_aggregator: Optional[torch.nn.Module],
         preencoder: Optional[AbsPreEncoder],
         encoder: AbsEncoder,
         postencoder: Optional[AbsPostEncoder],
@@ -106,7 +107,7 @@ class ESPnetASRModel(AbsESPnetModel):
             self.encoder.interctc_use_conditioning = False
         if self.encoder.interctc_use_conditioning:
             self.encoder.conditioning_layer = torch.nn.Linear(
-                vocab_size, self.encoder.output_size()
+                16, self.encoder.output_size()
             )
 
         self.use_transducer_decoder = joint_network is not None
