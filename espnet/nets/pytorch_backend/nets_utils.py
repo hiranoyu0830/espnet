@@ -72,6 +72,34 @@ def pad_list(xs, pad_value):
     for i in range(n_batch):
         pad[i, : xs[i].size(0)] = xs[i]
 
+    for i in range(n_batch):
+        if pad[0].shape == torch.Size([max_len, 4]):
+            #assert pad.shape == torch.Size([n_batch, max_len, 4]) 
+            assert pad.shape[0] == n_batch
+            assert pad.shape[1] == max_len
+            assert pad.shape[-1] == 4
+            unsorted_pad = pad[i]
+            #assert unsorted_pad.shape == torch.Size([max_len, 4])
+            unsorted_pad = unsorted_pad.unfold(dimension=0, size=max_len, step=1).squeeze(0)
+            #assert unsorted_pad.shape == torch.Size([4, max_len])
+            # Find the first nonzero indice in each spkr
+            first_indices = []
+            for spk in range(4):
+                nonzero_indice = torch.nonzero(unsorted_pad[spk])
+                if 0 in nonzero_indice.shape:
+                    first_nonzero_indice = torch.Tensor([float('inf')])
+                else:
+                    first_nonzero_indice = nonzero_indice[0]
+                first_indices.append(first_nonzero_indice.item())
+            assert len(first_indices) == 4
+            order_to_sort = torch.argsort(torch.tensor(first_indices))
+            assert order_to_sort.size(0) == 4
+            sorted_pad = unsorted_pad[order_to_sort.tolist(),:]
+            assert sorted_pad.shape == unsorted_pad.shape
+            # reshape to the original size
+            sorted_pad = sorted_pad.unfold(dimension=0, size=4, step=1).squeeze(0)
+            pad[i] = sorted_pad
+
     return pad
 
 
