@@ -30,6 +30,8 @@ from espnet2.asr.encoder.conformer_encoder import ConformerEncoder
 from espnet2.asr.encoder.contextual_block_conformer_encoder import (
     ContextualBlockConformerEncoder,
 )
+from espnet2.asr.encoder.mfcca_encoder import MFCCAEncoder
+
 from espnet2.asr.encoder.contextual_block_transformer_encoder import (
     ContextualBlockTransformerEncoder,
 )
@@ -51,12 +53,15 @@ from espnet2.asr.encoder.whisper_encoder import OpenAIWhisperEncoder
 from espnet2.asr.espnet_model import ESPnetASRModel
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.frontend.default import DefaultFrontend
+from espnet2.asr.frontend.default import MultiChannelFrontend
 from espnet2.asr.frontend.fused import FusedFrontends
 from espnet2.asr.frontend.s3prl import S3prlFrontend
 from espnet2.asr.frontend.whisper import WhisperFrontend
 from espnet2.asr.frontend.windowing import SlidingWindow
 from espnet2.asr.maskctc_model import MaskCTCModel
 from espnet2.asr.pit_espnet_model import ESPnetASRModel as PITESPnetModel
+from espnet2.asr.mfcca_model import MFCCACTCModel as MFCCAModel
+from espnet2.asr.mfcca_model import MFCCACTCModel
 from espnet2.asr.postencoder.abs_postencoder import AbsPostEncoder
 from espnet2.asr.postencoder.hugging_face_transformers_postencoder import (
     HuggingFaceTransformersPostEncoder,
@@ -92,6 +97,7 @@ frontend_choices = ClassChoices(
     name="frontend",
     classes=dict(
         default=DefaultFrontend,
+        multichannel=MultiChannelFrontend,
         sliding_window=SlidingWindow,
         s3prl=S3prlFrontend,
         fused=FusedFrontends,
@@ -130,6 +136,8 @@ model_choices = ClassChoices(
         espnet=ESPnetASRModel,
         maskctc=MaskCTCModel,
         pit_espnet=PITESPnetModel,
+        mfcca=MFCCAModel,
+        mfcca_ctc=MFCCACTCModel,
     ),
     type_check=AbsESPnetModel,
     default="espnet",
@@ -148,6 +156,7 @@ encoder_choices = ClassChoices(
     "encoder",
     classes=dict(
         conformer=ConformerEncoder,
+        mfcca=MFCCAEncoder,
         transformer=TransformerEncoder,
         transformer_multispkr=TransformerEncoderMultiSpkr,
         contextual_block_transformer=ContextualBlockTransformerEncoder,
@@ -411,7 +420,9 @@ class ASRTask(AbsTask):
             class_choices.add_arguments(group)
 
     @classmethod
-    def build_collate_fn(cls, args: argparse.Namespace, train: bool) -> Callable[
+    def build_collate_fn(
+        cls, args: argparse.Namespace, train: bool
+    ) -> Callable[
         [Collection[Tuple[str, Dict[str, np.ndarray]]]],
         Tuple[List[str], Dict[str, torch.Tensor]],
     ]:
@@ -444,34 +455,32 @@ class ASRTask(AbsTask):
                 g2p_type=args.g2p,
                 # NOTE(kamo): Check attribute existence for backward compatibility
                 rir_scp=args.rir_scp if hasattr(args, "rir_scp") else None,
-                rir_apply_prob=(
-                    args.rir_apply_prob if hasattr(args, "rir_apply_prob") else 1.0
-                ),
+                rir_apply_prob=args.rir_apply_prob
+                if hasattr(args, "rir_apply_prob")
+                else 1.0,
                 noise_scp=args.noise_scp if hasattr(args, "noise_scp") else None,
-                noise_apply_prob=(
-                    args.noise_apply_prob if hasattr(args, "noise_apply_prob") else 1.0
-                ),
-                noise_db_range=(
-                    args.noise_db_range if hasattr(args, "noise_db_range") else "13_15"
-                ),
-                short_noise_thres=(
-                    args.short_noise_thres
-                    if hasattr(args, "short_noise_thres")
-                    else 0.5
-                ),
-                speech_volume_normalize=(
-                    args.speech_volume_normalize if hasattr(args, "rir_scp") else None
-                ),
-                aux_task_names=(
-                    args.aux_ctc_tasks if hasattr(args, "aux_ctc_tasks") else None
-                ),
-                use_lang_prompt=(
-                    args.use_lang_prompt if hasattr(args, "use_lang_prompt") else None
-                ),
+                noise_apply_prob=args.noise_apply_prob
+                if hasattr(args, "noise_apply_prob")
+                else 1.0,
+                noise_db_range=args.noise_db_range
+                if hasattr(args, "noise_db_range")
+                else "13_15",
+                short_noise_thres=args.short_noise_thres
+                if hasattr(args, "short_noise_thres")
+                else 0.5,
+                speech_volume_normalize=args.speech_volume_normalize
+                if hasattr(args, "rir_scp")
+                else None,
+                aux_task_names=args.aux_ctc_tasks
+                if hasattr(args, "aux_ctc_tasks")
+                else None,
+                use_lang_prompt=args.use_lang_prompt
+                if hasattr(args, "use_lang_prompt")
+                else None,
                 **args.preprocessor_conf,
-                use_nlp_prompt=(
-                    args.use_nlp_prompt if hasattr(args, "use_nlp_prompt") else None
-                ),
+                use_nlp_prompt=args.use_nlp_prompt
+                if hasattr(args, "use_nlp_prompt")
+                else None,
             )
         else:
             retval = None
@@ -496,6 +505,7 @@ class ASRTask(AbsTask):
         MAX_REFERENCE_NUM = 4
 
         retval = ("spk_labels",)
+        #retval = tuple(retval)
 
         logging.info(f"Optional Data Names: {retval }")
         assert check_return_type(retval)
@@ -555,7 +565,7 @@ class ASRTask(AbsTask):
         else:
             normalize = None
 
-        # ex. Label Aggregator layer
+        # 4. Label Aggregator layer
         label_aggregator_class = label_aggregator_choices.get_class(
             args.label_aggregator
         )
