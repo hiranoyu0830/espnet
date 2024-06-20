@@ -352,11 +352,13 @@ class SeparateSpeech:
                     enh_waves_res_i = enh_waves[i][:, :, overlap_length:t]
                 else:
                     enh_waves_res_i = enh_waves[i][:, :, overlap_length:]
-
-                # overlap-and-add (average over the overlapped part)
+            
+                # non-add
+                """
                 waves[:, :, -overlap_length:] = (
                     waves[:, :, -overlap_length:] + enh_waves[i][:, :, :overlap_length]
                 ) / 2
+                """
                 # concatenate the residual parts of the later segment
                 waves = torch.cat([waves, enh_waves_res_i], dim=2)
             # ensure the stitched length is same as input
