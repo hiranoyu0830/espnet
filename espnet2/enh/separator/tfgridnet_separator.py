@@ -138,8 +138,9 @@ class TFGridNet(AbsSeparator):
             assert len(input.shape) == 2
             input = input[..., None]  # [B, N, M]
 
-        mix_std_ = torch.std(input, dim=(1, 2), keepdim=True)  # [B, 1, 1]
-        input = input / mix_std_  # RMS normalization
+        # comment out for inference. Otherwise, chunks are normalized independently during inference.
+        #mix_std_ = torch.std(input, dim=(1, 2), keepdim=True)  # [B, 1, 1]
+        #input = input / mix_std_  # RMS normalization
 
         batch = self.enc(input, ilens)[0]  # [B, T, M, F]
         batch0 = batch.transpose(1, 2)  # [B, M, T, F]

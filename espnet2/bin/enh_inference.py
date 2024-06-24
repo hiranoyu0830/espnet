@@ -248,6 +248,10 @@ class SeparateSpeech:
 
         ###################################
         # Normalize the signal variance
+        # This is for tf-gridnet inference
+        mix_std_ = torch.std(speech_,mix, dim=(1, 2), keepdim=True)  # [B, 1, 1]
+        speech_mix = speech_mix / mix_std_  # RMS normalization
+        """
         if getattr(self.enh_model, "normalize_variance_per_ch", False):
             dim = 1
             mix_std_ = torch.std(speech_mix, dim=dim, keepdim=True)
@@ -259,7 +263,7 @@ class SeparateSpeech:
                 dim = 1
             mix_std_ = torch.std(speech_mix, dim=dim, keepdim=True)
             speech_mix = speech_mix / mix_std_  # RMS normalization
-
+        """
         category = kwargs.get("utt2category", None)
         if (
             self.enh_model.categories
@@ -375,6 +379,10 @@ class SeparateSpeech:
 
         ###################################
         # De-normalize the signal variance
+        # This is for tf-gridnet inference
+        mix_std_ = mix_std_[:, :, self.ref_channel]
+        waves = [w * mix_std_ for w in waves]
+        """
         if getattr(self.enh_model, "normalize_variance_per_ch", False):
             if mix_std_.ndim > 2:
                 mix_std_ = mix_std_[:, :, self.ref_channel]
@@ -383,7 +391,7 @@ class SeparateSpeech:
             if mix_std_.ndim > 2:
                 mix_std_ = mix_std_.squeeze(2)
             waves = [w * mix_std_ for w in waves]
-
+        """   
         if not self.sfi_processing and self.enh_model.always_forward_in_48k:
             waves = [
                 torchaudio.functional.resample(sp, 48000, fs)[..., : lengths0.max()]
