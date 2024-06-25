@@ -249,8 +249,9 @@ class SeparateSpeech:
         ###################################
         # Normalize the signal variance
         # This is for tf-gridnet inference
-        mix_std_ = torch.std(speech_,mix, dim=(1, 2), keepdim=True)  # [B, 1, 1]
-        speech_mix = speech_mix / mix_std_  # RMS normalization
+        # Normalize the entire signal
+        #mix_std_ = torch.std(speech_,mix, dim=(1, 2), keepdim=True)  # [B, 1, 1]
+        #speech_mix = speech_mix / mix_std_  # RMS normalization
         """
         if getattr(self.enh_model, "normalize_variance_per_ch", False):
             dim = 1
@@ -304,6 +305,11 @@ class SeparateSpeech:
                     t = T
                     speech_seg = speech_mix[:, st:en]  # B x T [x C]
 
+                # normalize the segmented speech
+                # this is for tf-gridnet inference
+                mix_std_ = torch.std(speech_seg, dim=(1, 2), keepdim=True)
+                speech_seg = speech_seg / mix_std_
+
                 lengths_seg = speech_mix.new_full(
                     [batch_size], dtype=torch.long, fill_value=T
                 )
@@ -313,6 +319,9 @@ class SeparateSpeech:
                     feats = [self.enh_model.enhance(feats)]
                 else:
                     feats, _, _ = self.enh_model.separator(feats, f_lens, additional)
+                    # de-normalize the segmented speech
+                    # this is for tf-gridnet inference
+                    feats = feats * mix_std_
                 processed_wav = [
                     self.enh_model.decoder(f, lengths_seg, fs=fs_)[0] for f in feats
                 ]
@@ -380,8 +389,8 @@ class SeparateSpeech:
         ###################################
         # De-normalize the signal variance
         # This is for tf-gridnet inference
-        mix_std_ = mix_std_[:, :, self.ref_channel]
-        waves = [w * mix_std_ for w in waves]
+        #mix_std_ = mix_std_[:, :, self.ref_channel]
+        #waves = [w * mix_std_ for w in waves]
         """
         if getattr(self.enh_model, "normalize_variance_per_ch", False):
             if mix_std_.ndim > 2:
