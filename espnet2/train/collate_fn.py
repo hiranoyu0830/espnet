@@ -223,15 +223,16 @@ def common_collate_fn(
 
         # Adjust the number of spkrs to the maximum number of spkrs in the mini-batch
         if key == "spk_labels":
-            max_spk = 4
+            max_spk = 4 # You can change this value as you like
             
             # deal with one by one in the mini-batch
             for d_spk in data:
                 # d_spk[key]: (num_spkrs, num_frames)
                 num_speakers = len(d_spk[key][0])
+                assert num_speakers <= 10, f"num_speakers: {num_speakers} > 10"
                 if num_speakers < max_spk:
                     # create inactive speakers by zero padding
-                    d_spk[key] = np.pad(d_spk[key], ((0, max_spk - num_speakers), (0, 0)), mode='constant')
+                    d_spk[key] = np.pad(d_spk[key], ((0, 0), (0, max_spk - num_speakers)), mode='constant')
                 elif num_speakers > max_spk:
                     # sort speakers in descending talkativeness order
                     indices = np.argsort(-np.sum(d_spk[key], axis=0), axis=0)
@@ -239,7 +240,7 @@ def common_collate_fn(
                     d_spk[key][-1] = d_spk[key][indices[:max_spk]]
                 else:
                     pass
-                assert len(d_spk[key]) == max_spk, f"num_spkrs: {d_spk[key].shape[0]}, not equal to max_spk: {max_spk}"
+                assert len(d_spk[key][0]) == max_spk, f"num_spkrs: {len(d_spk[key].shape[0])}, not equal to max_spk: {max_spk}. The shape of spk_labels is {d_spk[key].shape}"
 
         array_list = [d[key] for d in data]
 
